@@ -16,13 +16,11 @@ pwmPin = 18            #forward using PWM
 butPin = 17            # Broadcom pin 17 (P1 pin 11) (BUTTON)
 dc = 0                 # duty cycle (0-100) for PWM pin
 last_dc = 0            # for determining a dc change
-END = False            #True if red cone detected, ends program
 STATE = 0
 t_end = 0              #timer variable
 t_turn = 0             #timer variable
 color = ''
-protocal = "none"
-wheelpos = "straight"
+protocol = "idle"
 debounce = 0
 # Pin Setup:
 GPIO.setmode(GPIO.BCM)                  # Broadcom pin-numbering scheme
@@ -47,42 +45,30 @@ def SetTime(duration):
 #color detected fn
 def CONE_DETECT(color):
     global t_end
-    global direction
     global dc
-    global END
     global t_turn
-    global protocal
-    turn_time = .5              #time to turn wheels\
-    turn_duration = 5           #time to follow side
+    global protocol
 
     if (color == 'RED'):
         dc = 0                                      #sets duty cycle to 0, stopping the jeep
-        protocal = 'red'
+        protocol = 'red'
     elif (color =='BLUE'):
         print("blue!")
-
     elif (color == 'GREEN'):
-        t_turn = time.time() + turn_time            #turns wheels for .5 
-        t_end = time.time() + turn_duration         #sets follow duration for 5 seconds
-        direction = "right"                         #sets follow side to right
-        dc = 50                                     #sets speed to half
-        if(protocal == 'idle'):                     #if its in idle, changes state to green protocal
-            protocal = 'green'
+        if(protocol == 'idle'):                     #if its in idle, changes state to green protocol
+            SetTime(5)
+            protocol = 'green'
     elif (color == 'YELLOW'):
-        t_turn = time.time() + turn_time            #turns wheels for .5 
-        t_end = time.time() + turn_duration         #sets follow duration for 5 seconds
-        direction = "left"                          #sets follow side to left
-        dc = 50                                     #sets speed to half
-        if(protocal == 'idle'):
-            protocal = 'yellow'
+        if(protocol == 'idle'):
+            SetTime(5)
+            protocol = 'yellow'
     elif (color == 'ORANGE'):
-        dc = 50                                     #sets speed to half
-        t_end = time.time() + turn_duration
                         #################
                         ###YOLO ENABLE###
                         #################
-        if(protocal == 'idle'):
-            protocal = 'orange'
+        if(protocol == 'idle'):
+            SetTime(5)
+            protocol = 'orange'
 
 try:
     while 1:
@@ -93,8 +79,8 @@ try:
         cx = int(width/2)
         cy = int(height/2)
         ly = int(height/2)
-        lx = int(width/4)
-        rx =int((width/4)*3)
+        lx = int(width/8)
+        rx =int((width/8)*7)
         ry = int(height/2)
 
         #HSV pixel setup
@@ -123,8 +109,6 @@ try:
         #saturation detection (mid)
         if saturation_mid < 50:
             detect = "no cones"
-            dc = 100
-            protocal = "idle"
         else:                       #Bright enough to be a color
             detect = "cones"
             if hue_value < 5:
@@ -141,18 +125,43 @@ try:
                 color = "RED"
             CONE_DETECT(color)
 
-        # if (t_end > time.time()):             #if grenn left on if yellow right on (simple test) time didnt work
-        #     if (t_turn > time.time()):
-        #         if (direction == "left"):
-        #             GPIO.output(left, GPIO.HIGH)
-        #             GPIO.output(right, GPIO.LOW)
-        #         elif (direction == 'right'):
-        #             GPIO.output(right, GPIO.HIGH)
-        #             GPIO.output(left, GPIO.LOW)
+        #############################################GREEN RIGHT YELLOW LEFT TURN protocol##################################
+        if(protocol == "green"):   
+            dc = 100
+            if(t_end > time.time()):
+                GPIO.output(red, GPIO.LOW)
+                if(left_sense == "off"):
+                    GPIO.output(left, GPIO.LOW)
+                    GPIO.output(right, GPIO.HIGH)
+                elif(right_sense == "off"):
+                    GPIO.output(left, GPIO.HIGH)
+                    GPIO.output(right, GPIO.LOW)
+                else:
+                    GPIO.output(left, GPIO.LOW)
+                    GPIO.output(right, GPIO.HIGH)
+            else:
+                protocol = "idle"
 
-        #############################################IDLE SIDEWALK FOLLOWING PROTOCAL############################
-        if(protocal=='idle'):
+        elif(protocol == "yellow"):
+            dc = 100    
+            if(t_end > time.time()):
+                GPIO.output(red, GPIO.LOW)
+                if(left_sense == "off"):
+                    GPIO.output(left, GPIO.LOW)
+                    GPIO.output(right, GPIO.HIGH)
+                elif(right_sense == "off"):
+                    GPIO.output(left, GPIO.HIGH)
+                    GPIO.output(right, GPIO.LOW)
+                else:
+                    GPIO.output(left, GPIO.HIGH)
+                    GPIO.output(right, GPIO.LOW)
+            else:
+                protocol = "idle"
+
+        #############################################IDLE SIDEWALK FOLLOWING protocol############################
+        elif(protocol=='idle'):
             GPIO.output(red, GPIO.LOW)
+            dc = 100
             if(left_sense == "off"):
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.HIGH)
@@ -163,8 +172,8 @@ try:
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.LOW)
 
-        ############################################LATCHING eSTOP PROTOCAL###############################
-        if(protocal =='red'):
+        ############################################LATCHING eSTOP protocol###############################
+        elif(protocol =='red'):
             pwm.ChangeDutyCycle(0)
             GPIO.output(left, GPIO.LOW)
             GPIO.output(right, GPIO.LOW)
@@ -174,21 +183,22 @@ try:
                 if GPIO.input(butPin)==GPIO.LOW:
                     SetTime(.2)
                     debounce = t_end
-                    protocal == 'idle'
+                    protocol = 'idle'
                     print ("pressed")
                     break
-
+        else:
+            protocal ="idle"
         #Draws circles around sensing pixels
         cv2.circle(frame, (cx, cy),5, (255, 255, 255),3)
         cv2.circle(frame, (lx,ly),5, (255, 255, 255),3)
         cv2.circle(frame, (rx,ry),5, (255, 255, 255),3)
-        print(color)
-        print(detect)
-        print(pixel_center)
+        # print(color)
+        # print(detect)
+        # print(pixel_center)
         print("left: ",left_sense)
         print("right: ",right_sense)
-        print("Protocal:", protocal)
-
+        print("protocol:", protocol)
+        print(t_end-time.time())
 
         #break on button press/terminate program
         if(debounce < time.time()):
