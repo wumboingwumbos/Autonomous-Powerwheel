@@ -3,12 +3,12 @@ import RPi.GPIO as GPIO
 import numpy as np
 import time
 
-#cv setup
+                        #cv setup
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-#variables
+            #variables
 red = 14               #STOP indicator
 right = 27             #(green) right hbridge high
 left = 22              #(blue)  left hbridge high
@@ -22,27 +22,74 @@ t_turn = 0             #timer variable
 color = ''
 protocol = "idle"
 debounce = 0
-# Pin Setup:
+trigPin = 23            # setup trigger and echo pins
+echoPin = 24
+
+
+
+                        # Pin Setup:
 GPIO.setmode(GPIO.BCM)                  # Broadcom pin-numbering scheme
+GPIO.setup(trigPin, GPIO.OUT)           # setup trigger and echo pins
+GPIO.setup(echoPin, GPIO.IN)
 GPIO.setup(red, GPIO.OUT)               # LED pin set as output
 GPIO.setup(left, GPIO.OUT)              # LED pin set as output
 GPIO.setup(right, GPIO.OUT)             # LED pin set as output
 GPIO.setup(pwmPin, GPIO.OUT)            # PWM pin set as output
 pwm = GPIO.PWM(pwmPin, 50)              # Initialize PWM on pwmPin 100Hz frequency
 GPIO.setup(butPin, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Button pin set as input w/ pull-up
-# Output pin setup
+                        # Output pin setup
 GPIO.output(red, GPIO.LOW)
 GPIO.output(left, GPIO.LOW)
 GPIO.output(right, GPIO.LOW)
 pwm.start(dc)
-
-
+#####################################ULTRASONIC################################
+def Ultrasonic():
+    
+    global dist_cm
+    delayTime = 0
+    GPIO.output(trigPin, 0)
+    time.sleep(2E-6)
+    # set trigger pin high for 10 micro seconds
+    GPIO.output(trigPin, 1)
+    time.sleep(10E-6)
+    # go back to zero - communication compete to send ping
+    GPIO.output(trigPin, 0)
+    # now need to wait till echo pin goes high to start the timer
+    # this means the ping has been sent
+    delayTime = time.time() + .1
+    while GPIO.input(echoPin) == 0:
+        if (time.time() > delayTime):
+            break
+        pass
+    # start the time - use system time
+    echoStartTime = time.time()
+    # wait for echo pin to go down to zero
+    delayTime = time.time() + .1
+    while GPIO.input(echoPin) == 1:
+        if (time.time() > delayTime):
+            break
+        pass
+    echoStopTime = time.time()
+    # calculate ping travel time
+    pingTravelTime = echoStopTime - echoStartTime
+    # Use the time to calculate the distance to the target.
+    # speed of sound at 72 deg F is 344.44 m/s
+    # from weather.gov/epz/wxcalc_speedofsound.
+    # equations used by calculator at website above.
+    # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
+    # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
+    #
+    # divide in half since the time of travel is out and back
+    dist_cm = (pingTravelTime*34444)/2
+    # sleep to slow things down
+    # time.sleep(delayTime)
+                    #Timer Function
 def SetTime(duration):
     global t_end
 
     t_end = time.time() + duration
 
-#color detected fn
+                        #color detected fn
 def CONE_DETECT(color):
     global t_end
     global dc
@@ -63,15 +110,17 @@ def CONE_DETECT(color):
             SetTime(5)
             protocol = 'yellow'
     elif (color == 'ORANGE'):
-                        #################
-                        ###YOLO ENABLE###
-                        #################
         if(protocol == 'idle'):
             SetTime(5)
             protocol = 'orange'
 
 try:
     while 1:
+        Ultrasonic()
+        if (dist_cm <50):
+            protocol ="red"
+
+        print(round(dist_cm, 1),'cm')
         _, frame = cap.read()
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         height, width, _ = frame.shape
@@ -172,6 +221,10 @@ try:
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.LOW)
 
+        ############################################ORANGE PROTOCOL######################################
+        elif(protocol == "orange"):
+            dc = 100
+            protocol = 'idle'
         ############################################LATCHING eSTOP protocol###############################
         elif(protocol =='red'):
             pwm.ChangeDutyCycle(0)
@@ -195,10 +248,10 @@ try:
         # print(color)
         # print(detect)
         # print(pixel_center)
-        print("left: ",left_sense)
-        print("right: ",right_sense)
-        print("protocol:", protocol)
-        print(t_end-time.time())
+        # print("left: ",left_sense)
+        # print("right: ",right_sense)
+        # print("protocol:", protocol)
+        # print(t_end-time.time())
 
         #break on button press/terminate program
         if(debounce < time.time()):
@@ -214,6 +267,9 @@ try:
         key = cv2.waitKey(1)
         if key == 27:
             break
+
+
+
 except KeyboardInterrupt: # If CTRL+C is pressed, exit cleanly:
     pwm.stop() # stop PWM
     GPIO.cleanup() # cleanup all GPIO
