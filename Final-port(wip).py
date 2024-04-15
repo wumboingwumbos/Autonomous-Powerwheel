@@ -56,7 +56,7 @@ def Ultrasonic():
     GPIO.output(trigPin, 0)
     # now need to wait till echo pin goes high to start the timer
     # this means the ping has been sent
-    delayTime = time.time() + .1
+    delayTime = time.time() + .2
     while GPIO.input(echoPin) == 0:
         if (time.time() > delayTime):
             break
@@ -64,7 +64,7 @@ def Ultrasonic():
     # start the time - use system time
     echoStartTime = time.time()
     # wait for echo pin to go down to zero
-    delayTime = time.time() + .1
+    delayTime = time.time() + .2
     while GPIO.input(echoPin) == 1:
         if (time.time() > delayTime):
             break
@@ -84,6 +84,31 @@ def Ultrasonic():
     # sleep to slow things down
     # time.sleep(delayTime)
                     #Timer Function
+
+def colors(saturation,hue_value):
+        #saturation detection (mid)
+    global detect
+    global color
+
+    if saturation < 60:
+        detect = "no cones"
+    else:                       #Bright enough to be a color
+        detect = "cones"
+        if hue_value < 5:
+            color = "RED"
+        elif hue_value < 25:
+            color = "ORANGE"
+        elif hue_value <40:
+            color = "YELLOW"
+        elif hue_value <80:
+            color = "GREEN"
+        elif hue_value < 150:
+            color = "BLUE"
+        else:
+            color = "RED"
+        CONE_DETECT(color)
+    print(detect)
+
 def SetTime(duration):
     global t_end
 
@@ -101,45 +126,74 @@ def CONE_DETECT(color):
         protocol = 'red'
     elif (color =='BLUE'):
         print("blue!")
-    elif (color == 'GREEN'):
-        if(protocol == 'idle'):                     #if its in idle, changes state to green protocol
-            SetTime(5)
-            protocol = 'green'
-    elif (color == 'YELLOW'):
-        if(protocol == 'idle'):
-            SetTime(5)
-            protocol = 'yellow'
     elif (color == 'ORANGE'):
-        if(protocol == 'idle'):
+        if(protocol == 'yellow'):                     #if its in idle, changes state to green protocol
             SetTime(5)
             protocol = 'orange'
+    elif (color == 'YELLOW'):
+        if(protocol == 'orange'):
+            SetTime(5)
+            protocol = 'yellow'
+    # elif (color == 'ORANGE'):
+    #     if(protocol == 'idle'):
+    #         SetTime(5)
+    #         protocol = 'orange'
 
 try:
     while 1:
-        Ultrasonic()
-        if (dist_cm <50):
-            protocol ="red"
+        # Ultrasonic()
+        # if (dist_cm <50):
+        #     protocol ="red"
 
-        print(round(dist_cm, 1),'cm')
+        # print(round(dist_cm, 1),'cm')
         _, frame = cap.read()
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         height, width, _ = frame.shape
         #finds centerpoint: pixel that will detect HSV value
-        cx = int(width/2)
-        cy = int(height/2)
-        ly = int(height/2)
-        lx = int(width/8)
-        rx =int((width/8)*7)
-        ry = int(height/2)
+        cx1 = int(width/2-300)
+        cx2 = int(width/2)
+        cx3 = int(width/2+300)
+        cx4 = int(width/2-150)
+        cx5 = int(width/2+150)
+
+        cy = int(700)
+        ly = int(height/2+100)
+        lx = int(200)
+        rx =int(width-200)
+        ry = int(height/2+100)
 
         #HSV pixel setup
-        pixel_center = hsv_frame[cy,cx]
+        Sensor1 = hsv_frame[cy,cx1]
+        hue1 = Sensor1[0]
+        cone1 = Sensor1[1]
+
+        Sensor2 = hsv_frame[cy,cx2]
+        hue2 = Sensor2[0]
+        cone2 = Sensor2[1]
+
+        Sensor3 = hsv_frame[cy,cx3]
+        hue3 = Sensor3[0]
+        cone3 = Sensor3[1]
+
+        Sensor4 = hsv_frame[cy,cx4]
+        hue4 = Sensor4[0]
+        cone4 = Sensor4[1]
+
+        Sensor5 = hsv_frame[cy,cx5]
+        hue5 = Sensor5[0]
+        cone5 = Sensor5[1]
+
+
         detector_left = hsv_frame[ly,lx]
         detector_right = hsv_frame[ry,rx]
-        hue_value = pixel_center[0]
-        saturation_mid = pixel_center[1]
         saturation_left = detector_left[1]
         saturation_right = detector_right[1]
+
+        colors(cone1,hue1)
+        colors(cone2,hue2)
+        colors(cone3,hue3)
+        colors(cone4,hue4)
+        colors(cone5,hue5)
 
         if (last_dc != dc):
             pwm.ChangeDutyCycle(dc)
@@ -155,62 +209,30 @@ try:
         else:
             right_sense = "off"
 
-        #saturation detection (mid)
-        if saturation_mid < 50:
-            detect = "no cones"
-        else:                       #Bright enough to be a color
-            detect = "cones"
-            if hue_value < 5:
-                color = "RED"
-            elif hue_value < 25:
-                color = "ORANGE"
-            elif hue_value <35:
-                color = "YELLOW"
-            elif hue_value <80:
-                color = "GREEN"
-            elif hue_value < 150:
-                color = "BLUE"
-            else:
-                color = "RED"
-            CONE_DETECT(color)
+        # #saturation detection (mid)
+        # if saturation_mid < 50:
+        #     detect = "no cones"
+        # else:                       #Bright enough to be a color
+        #     detect = "cones"
+        #     if hue_value < 5:
+        #         color = "RED"
+        #     elif hue_value < 25:
+        #         color = "ORANGE"
+        #     elif hue_value <35:
+        #         color = "YELLOW"
+        #     elif hue_value <80:
+        #         color = "GREEN"
+        #     elif hue_value < 150:
+        #         color = "BLUE"
+        #     else:
+        #         color = "RED"
+        #     CONE_DETECT(color)
 
-        #############################################GREEN RIGHT YELLOW LEFT TURN protocol##################################
-        if(protocol == "green"):   
+        #############################################orange RIGHT YELLOW LEFT TURN protocol##################################
+        if(protocol == "orange"):   
             dc = 100
-            if(t_end > time.time()):
-                GPIO.output(red, GPIO.LOW)
-                if(left_sense == "off"):
-                    GPIO.output(left, GPIO.LOW)
-                    GPIO.output(right, GPIO.HIGH)
-                elif(right_sense == "off"):
-                    GPIO.output(left, GPIO.HIGH)
-                    GPIO.output(right, GPIO.LOW)
-                else:
-                    GPIO.output(left, GPIO.LOW)
-                    GPIO.output(right, GPIO.HIGH)
-            else:
-                protocol = "idle"
-
-        elif(protocol == "yellow"):
-            dc = 100    
-            if(t_end > time.time()):
-                GPIO.output(red, GPIO.LOW)
-                if(left_sense == "off"):
-                    GPIO.output(left, GPIO.LOW)
-                    GPIO.output(right, GPIO.HIGH)
-                elif(right_sense == "off"):
-                    GPIO.output(left, GPIO.HIGH)
-                    GPIO.output(right, GPIO.LOW)
-                else:
-                    GPIO.output(left, GPIO.HIGH)
-                    GPIO.output(right, GPIO.LOW)
-            else:
-                protocol = "idle"
-
-        #############################################IDLE SIDEWALK FOLLOWING protocol############################
-        elif(protocol=='idle'):
+            # if(t_end > time.time()):
             GPIO.output(red, GPIO.LOW)
-            dc = 100
             if(left_sense == "off"):
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.HIGH)
@@ -219,12 +241,46 @@ try:
                 GPIO.output(right, GPIO.LOW)
             else:
                 GPIO.output(left, GPIO.LOW)
+                GPIO.output(right, GPIO.HIGH)
+            # else:
+            #     protocol = "idle"
+
+        elif(protocol == "yellow"):
+            dc = 100    
+            # if(t_end > time.time()):
+            GPIO.output(red, GPIO.LOW)
+            if(left_sense == "off"):
+                GPIO.output(left, GPIO.LOW)
+                GPIO.output(right, GPIO.HIGH)
+            elif(right_sense == "off"):
+                GPIO.output(left, GPIO.HIGH)
+                GPIO.output(right, GPIO.LOW)
+            else:
+                GPIO.output(left, GPIO.HIGH)
+                GPIO.output(right, GPIO.LOW)
+            # else:
+            #     protocol = "idle"
+
+        #############################################IDLE SIDEWALK FOLLOWING protocol############################
+        elif(protocol=='idle'):
+            GPIO.output(red, GPIO.LOW)
+            dc = 100
+            if(left_sense == "off"):
+                GPIO.output(left, GPIO.LOW)
+                GPIO.output(right, GPIO.HIGH)
+                protocol = 'yellow'
+            elif(right_sense == "off"):
+                GPIO.output(left, GPIO.HIGH)
+                GPIO.output(right, GPIO.LOW)
+                protocol = 'orange'
+            else:
+                GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.LOW)
 
         ############################################ORANGE PROTOCOL######################################
-        elif(protocol == "orange"):
-            dc = 100
-            protocol = 'idle'
+        # elif(protocol == "orange"):
+        #     dc = 100
+        #     protocol = 'idle'
         ############################################LATCHING eSTOP protocol###############################
         elif(protocol =='red'):
             pwm.ChangeDutyCycle(0)
@@ -236,21 +292,26 @@ try:
                 if GPIO.input(butPin)==GPIO.LOW:
                     SetTime(.2)
                     debounce = t_end
-                    protocol = 'idle'
+                    protocol = 'orange'
                     print ("pressed")
                     break
         else:
             protocal ="idle"
+
         #Draws circles around sensing pixels
-        cv2.circle(frame, (cx, cy),5, (255, 255, 255),3)
+        cv2.circle(frame, (cx1, cy),5, (255, 255, 255),3)
+        cv2.circle(frame, (cx2, cy),5, (255, 255, 255),3)
+        cv2.circle(frame, (cx3, cy),5, (255, 255, 255),3) 
+        cv2.circle(frame, (cx4, cy),5, (255, 255, 255),3)
+        cv2.circle(frame, (cx5, cy),5, (255, 255, 255),3)                
         cv2.circle(frame, (lx,ly),5, (255, 255, 255),3)
         cv2.circle(frame, (rx,ry),5, (255, 255, 255),3)
         # print(color)
-        # print(detect)
-        # print(pixel_center)
+
+        # print(Sensor1)
         # print("left: ",left_sense)
         # print("right: ",right_sense)
-        # print("protocol:", protocol)
+        print("protocol:", protocol)
         # print(t_end-time.time())
 
         #break on button press/terminate program
