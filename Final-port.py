@@ -14,17 +14,16 @@ right = 27             #(green) right hbridge high
 left = 22              #(blue)  left hbridge high
 pwmPin = 18            #forward using PWM
 butPin = 17            # Broadcom pin 17 (P1 pin 11) (BUTTON)
+trigPin = 23            # setup trigger and echo pins
+echoPin = 24
 dc = 0                 # duty cycle (0-100) for PWM pin
 last_dc = 0            # for determining a dc change
-STATE = 0
 t_end = 0              #timer variable
 t_turn = 0             #timer variable
 color = ''
 protocol = "idle"
-debounce = 0
-trigPin = 23            # setup trigger and echo pins
-echoPin = 24
-i=0                        #debounce
+debounce = 0               #debuonce for cones
+i=0                        #debounce for ultrasonic
 
 
                         # Pin Setup:
