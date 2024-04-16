@@ -24,7 +24,7 @@ protocol = "idle"
 debounce = 0
 trigPin = 23            # setup trigger and echo pins
 echoPin = 24
-
+i=0                        #debounce
 
 
                         # Pin Setup:
@@ -107,7 +107,7 @@ def colors(saturation,hue_value):
         else:
             color = "RED"
         CONE_DETECT(color)
-    print(detect)
+    # print(detect)
 
 def SetTime(duration):
     global t_end
@@ -123,6 +123,7 @@ def CONE_DETECT(color):
 
     if (color == 'RED'):
         dc = 0                                      #sets duty cycle to 0, stopping the jeep
+        print("saw red cone")
         protocol = 'red'
     elif (color =='BLUE'):
         print("blue!")
@@ -134,73 +135,75 @@ def CONE_DETECT(color):
         if(protocol == 'orange'):
             SetTime(5)
             protocol = 'yellow'
-    # elif (color == 'ORANGE'):
-    #     if(protocol == 'idle'):
-    #         SetTime(5)
-    #         protocol = 'orange'
 
 try:
     while 1:
-        # Ultrasonic()
-        # if (dist_cm <50):
-        #     protocol ="red"
 
-        # print(round(dist_cm, 1),'cm')
+###################################################Ultrasonic################################
+        Ultrasonic()
+        print(round(dist_cm, 1),'cm')
+        if (dist_cm <80):
+            i=i+1
+        else:
+            i=0
+        if i>3:                             #debounce for ultrasonic
+            print("too close")
+            protocol ="red"
+
+############################################ Video Setup ####################################
         _, frame = cap.read()
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         height, width, _ = frame.shape
-        #finds centerpoint: pixel that will detect HSV value
-        cx1 = int(width/2-300)
+        
+        cx1 = int(width/2-300)  #finds x values of pixels used to sense cones
         cx2 = int(width/2)
         cx3 = int(width/2+300)
         cx4 = int(width/2-150)
         cx5 = int(width/2+150)
+        cy = int(700)           
 
-        cy = int(700)
-        ly = int(height/2+100)
+        ly = int(height/2+100)  #sidewalk detector pixel locations (xy)
         lx = int(200)
         rx =int(width-200)
         ry = int(height/2+100)
 
-        #HSV pixel setup
-        Sensor1 = hsv_frame[cy,cx1]
+                                            #HSV pixel setup for each 'sensor'
+        Sensor1 = hsv_frame[cy,cx1]                     #
         hue1 = Sensor1[0]
-        cone1 = Sensor1[1]
-
-        Sensor2 = hsv_frame[cy,cx2]
+        cone1 = Sensor1[1]                              
+                                                        
+        Sensor2 = hsv_frame[cy,cx2]                     #
         hue2 = Sensor2[0]
         cone2 = Sensor2[1]
 
-        Sensor3 = hsv_frame[cy,cx3]
+        Sensor3 = hsv_frame[cy,cx3]                     #
         hue3 = Sensor3[0]
         cone3 = Sensor3[1]
 
-        Sensor4 = hsv_frame[cy,cx4]
+        Sensor4 = hsv_frame[cy,cx4]                     #
         hue4 = Sensor4[0]
         cone4 = Sensor4[1]
 
-        Sensor5 = hsv_frame[cy,cx5]
+        Sensor5 = hsv_frame[cy,cx5]                     #
         hue5 = Sensor5[0]
         cone5 = Sensor5[1]
 
-
-        detector_left = hsv_frame[ly,lx]
+        detector_left = hsv_frame[ly,lx]    #gets the saturation of the sidewalk detector pixels
         detector_right = hsv_frame[ry,rx]
         saturation_left = detector_left[1]
         saturation_right = detector_right[1]
 
-        colors(cone1,hue1)
+        colors(cone1,hue1)                  #plugs in the saturation and hue of each cone sensor pixel into the colors fn#
         colors(cone2,hue2)
         colors(cone3,hue3)
         colors(cone4,hue4)
         colors(cone5,hue5)
 
-        if (last_dc != dc):
+        if (last_dc != dc):                 #updates pwm if it is changed
             pwm.ChangeDutyCycle(dc)
             last_dc = dc
 
-        #Saturation Detection (Left,right)
-        if saturation_left <50:
+        if saturation_left <50:             #Saturation Detection (Left,right)
             left_sense = "on"
         else:
             left_sense = "off"
@@ -209,26 +212,7 @@ try:
         else:
             right_sense = "off"
 
-        # #saturation detection (mid)
-        # if saturation_mid < 50:
-        #     detect = "no cones"
-        # else:                       #Bright enough to be a color
-        #     detect = "cones"
-        #     if hue_value < 5:
-        #         color = "RED"
-        #     elif hue_value < 25:
-        #         color = "ORANGE"
-        #     elif hue_value <35:
-        #         color = "YELLOW"
-        #     elif hue_value <80:
-        #         color = "GREEN"
-        #     elif hue_value < 150:
-        #         color = "BLUE"
-        #     else:
-        #         color = "RED"
-        #     CONE_DETECT(color)
-
-        #############################################orange RIGHT YELLOW LEFT TURN protocol##################################
+        ############################################# ORANGE RIGHT YELLOW LEFT TURN PROTOCOL ##################################
         if(protocol == "orange"):   
             dc = 100
             # if(t_end > time.time()):
