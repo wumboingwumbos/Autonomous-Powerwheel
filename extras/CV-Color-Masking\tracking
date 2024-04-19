@@ -1,0 +1,53 @@
+import numpy as np
+import cv2
+#Servo Settings
+
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+#Defined the color ranges for detection
+#Red color range
+redLower = np.array([136, 87, 111], np.uint8)
+redUpper = np.array([180, 255, 255], np.uint8)
+redColor = (0,0,255)
+#Blue color range
+blueLower = np.array([100, 100, 100], np.uint8)
+blueUpper = np.array([140, 255, 255], np.uint8)
+blueColor = (255,0,0)
+#Green color range
+greenLower = np.array([36, 25, 100], np.uint8)
+greenUpper = np.array([70, 255, 255], np.uint8)
+greenColor = (0,255,0)
+####### IMPORTANT ###########
+#Edit these lines to change color for detection
+#Keep chosen color consistent
+#Lower range: redLower, greenLower, blueLower
+lower=blueLower
+#Upper range: redUpper, greenUpper, blueUpper
+upper=blueUpper
+#Bounding box: redColor, greenColor, blueColor
+color=blueColor
+#Label bounding box: 'Red', 'Green', 'Blue'
+name='Blue'
+###############################
+while True:
+    _, frame = cap.read()
+    hsvFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsvFrame, lower, upper)
+    kernel = np.ones((5, 5), "uint8")
+    colorMask = cv2.dilate(mask, kernel)
+    res_color = cv2.bitwise_and(frame, frame, mask = colorMask)
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if(area > 300):
+            x, y, w, h = cv2.boundingRect(contour)
+            frame = cv2.rectangle(frame, (x, y),(x + w, y + h),color, 2)
+            cv2.putText(frame, name+" Detected", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1,color,2)
+            break
+    cv2.imshow("Color Detection", frame)
+    if cv2.waitKey(1)== ord('q'):
+        break
+cap.release()
+cv2.destroyAllWindows()
