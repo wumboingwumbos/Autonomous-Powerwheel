@@ -38,7 +38,7 @@ i=0                        #debounce for ultrasonic
 last_prot='orange'
 count=0                  #framerate tester
 second=time.time()+1           
-
+ultraTrigger=time.time()+.5
                         # Pin Setup:
 GPIO.setmode(GPIO.BCM)                  # Broadcom pin-numbering scheme
 GPIO.setup(trigPin, GPIO.OUT)           # setup trigger and echo pins
@@ -56,6 +56,7 @@ GPIO.output(blue, GPIO.LOW)
 GPIO.output(left, GPIO.LOW)
 GPIO.output(right, GPIO.LOW)
 pwm.start(dc)
+
 #####################################ULTRASONIC################################
 # def Ultrasonic():
     
@@ -183,55 +184,49 @@ try:
                     protocol = last_prot
                     
 ###################################################Ultrasonic################################
-        global dist_cm
-        delayTime = 0
-        GPIO.output(trigPin, 0)
-        time.sleep(2E-6)
-        # set trigger pin high for 10 micro seconds
-        GPIO.output(trigPin, 1)
-        time.sleep(10E-6)
-        # go back to zero - communication compete to send ping
-        GPIO.output(trigPin, 0)
-        # now need to wait till echo pin goes high to start the timer
-        # this means the ping has been sent
-        delayTime = time.time() + .2
-        while GPIO.input(echoPin) == 0:
-            if (time.time() > delayTime):
-                break
-            pass
-        # start the time - use system time
-        echoStartTime = time.time()
-        # wait for echo pin to go down to zero
-        delayTime = time.time() + .2
-        while GPIO.input(echoPin) == 1:
-            if (time.time() > delayTime):
-                break
-            pass
-        echoStopTime = time.time()
-        # calculate ping travel time
-        pingTravelTime = echoStopTime - echoStartTime
-        # Use the time to calculate the distance to the target.
-        # speed of sound at 72 deg F is 344.44 m/s
-        # from weather.gov/epz/wxcalc_speedofsound.
-        # equations used by calculator at website above.
-        # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
-        # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
-        #
-        # divide in half since the time of travel is out and back
-        dist_cm = (pingTravelTime*34444)/2
-        # sleep to slow things down
-        # time.sleep(delayTime)
-                        #Timer Function
-
-        # print(round(dist_cm, 1),'cm')
-        if (dist_cm <80):
-            i=i+1
-        else:
-            i=0
-        if i>2:                             #debounce for ultrasonic
-            print("too close")
-            protocol ="red"
-
+        if (time.time()>=ultraTrigger):
+            delayTime = 0
+            GPIO.output(trigPin, 0)
+            time.sleep(2E-6)
+            # set trigger pin high for 10 micro seconds
+            GPIO.output(trigPin, 1)
+            time.sleep(10E-6)
+            # go back to zero - communication compete to send ping
+            GPIO.output(trigPin, 0)
+            # now need to wait till echo pin goes high to start the timer
+            # this means the ping has been sent
+            delayTime = time.time() + .2
+            while GPIO.input(echoPin) == 0:
+                if (time.time() > delayTime):
+                    break
+                pass
+            # start the time - use system time
+            echoStartTime = time.time()
+            # wait for echo pin to go down to zero
+            delayTime = time.time() + .2
+            while GPIO.input(echoPin) == 1:
+                if (time.time() > delayTime):
+                    break
+                pass
+            echoStopTime = time.time()
+            # calculate ping travel time
+            pingTravelTime = echoStopTime - echoStartTime
+            # Use the time to calculate the distance to the target.
+            # speed of sound at 72 deg F is 344.44 m/s
+            # from weather.gov/epz/wxcalc_speedofsound.
+            # equations used by calculator at website above.
+            # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
+            # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
+            #
+            # divide in half since the time of travel is out and back
+            dist_cm = (pingTravelTime*34444)/2
+            # sleep to slow things down
+            # time.sleep(delayTime)
+                            #Timer Function
+            print(dist_cm)
+            ultraTrigger = time.time() + .5
+            if (dist_cm <50):
+                protocol = "red"
 ################################### SENSOR PIXELS ##########################################
 
         cx1 = int(width/2-200)  #finds x values of pixels used to sense cones
@@ -403,8 +398,8 @@ try:
         cv2.circle(frame, (rx,ry),5, (255, 255, 255),3)
         # print(color)
 
-        # print(saturation_left)
-        # print(saturation_right)
+        print(saturation_left)
+        print(saturation_right)
         # print("left: ",left_sense)
         # print("right: ",right_sense)
         # print("protocol:", protocol)
