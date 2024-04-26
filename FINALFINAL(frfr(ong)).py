@@ -20,6 +20,7 @@ name='Blue'
 
             #variables
 red = 14               #STOP indicator
+blue = 25
 right = 27             #(green) right hbridge high
 left = 22              #(blue)  left hbridge high
 pwmPin = 18            #forward using PWM
@@ -34,13 +35,16 @@ color = ''
 protocol = "idle"
 debounce = 0               #debuonce for cones
 i=0                        #debounce for ultrasonic
-
+last_prot='orange'
+count=0                  #framerate tester
+second=time.time()+1           
 
                         # Pin Setup:
 GPIO.setmode(GPIO.BCM)                  # Broadcom pin-numbering scheme
 GPIO.setup(trigPin, GPIO.OUT)           # setup trigger and echo pins
 GPIO.setup(echoPin, GPIO.IN)
 GPIO.setup(red, GPIO.OUT)               # LED pin set as output
+GPIO.setup(blue, GPIO.OUT)               # LED pin set as output
 GPIO.setup(left, GPIO.OUT)              # LED pin set as output
 GPIO.setup(right, GPIO.OUT)             # LED pin set as output
 GPIO.setup(pwmPin, GPIO.OUT)            # PWM pin set as output
@@ -48,58 +52,59 @@ pwm = GPIO.PWM(pwmPin, 50)              # Initialize PWM on pwmPin 100Hz frequen
 GPIO.setup(butPin, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Button pin set as input w/ pull-up
                         # Output pin setup
 GPIO.output(red, GPIO.LOW)
+GPIO.output(blue, GPIO.LOW)
 GPIO.output(left, GPIO.LOW)
 GPIO.output(right, GPIO.LOW)
 pwm.start(dc)
 #####################################ULTRASONIC################################
-def Ultrasonic():
+# def Ultrasonic():
     
-    global dist_cm
-    delayTime = 0
-    GPIO.output(trigPin, 0)
-    time.sleep(2E-6)
-    # set trigger pin high for 10 micro seconds
-    GPIO.output(trigPin, 1)
-    time.sleep(10E-6)
-    # go back to zero - communication compete to send ping
-    GPIO.output(trigPin, 0)
-    # now need to wait till echo pin goes high to start the timer
-    # this means the ping has been sent
-    delayTime = time.time() + .2
-    while GPIO.input(echoPin) == 0:
-        if (time.time() > delayTime):
-            break
-        pass
-    # start the time - use system time
-    echoStartTime = time.time()
-    # wait for echo pin to go down to zero
-    delayTime = time.time() + .2
-    while GPIO.input(echoPin) == 1:
-        if (time.time() > delayTime):
-            break
-        pass
-    echoStopTime = time.time()
-    # calculate ping travel time
-    pingTravelTime = echoStopTime - echoStartTime
-    # Use the time to calculate the distance to the target.
-    # speed of sound at 72 deg F is 344.44 m/s
-    # from weather.gov/epz/wxcalc_speedofsound.
-    # equations used by calculator at website above.
-    # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
-    # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
-    #
-    # divide in half since the time of travel is out and back
-    dist_cm = (pingTravelTime*34444)/2
-    # sleep to slow things down
-    # time.sleep(delayTime)
-                    #Timer Function
+    # global dist_cm
+    # delayTime = 0
+    # GPIO.output(trigPin, 0)
+    # time.sleep(2E-6)
+    # # set trigger pin high for 10 micro seconds
+    # GPIO.output(trigPin, 1)
+    # time.sleep(10E-6)
+    # # go back to zero - communication compete to send ping
+    # GPIO.output(trigPin, 0)
+    # # now need to wait till echo pin goes high to start the timer
+    # # this means the ping has been sent
+    # delayTime = time.time() + .2
+    # while GPIO.input(echoPin) == 0:
+    #     if (time.time() > delayTime):
+    #         break
+    #     pass
+    # # start the time - use system time
+    # echoStartTime = time.time()
+    # # wait for echo pin to go down to zero
+    # delayTime = time.time() + .2
+    # while GPIO.input(echoPin) == 1:
+    #     if (time.time() > delayTime):
+    #         break
+    #     pass
+    # echoStopTime = time.time()
+    # # calculate ping travel time
+    # pingTravelTime = echoStopTime - echoStartTime
+    # # Use the time to calculate the distance to the target.
+    # # speed of sound at 72 deg F is 344.44 m/s
+    # # from weather.gov/epz/wxcalc_speedofsound.
+    # # equations used by calculator at website above.
+    # # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
+    # # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
+    # #
+    # # divide in half since the time of travel is out and back
+    # dist_cm = (pingTravelTime*34444)/2
+    # # sleep to slow things down
+    # # time.sleep(delayTime)
+    #                 #Timer Function
 
 def colors(saturation,hue_value):
         #saturation detection (mid)
     global detect
     global color
 
-    if saturation < 60:
+    if saturation < 100:
         detect = "no cones"
     else:                       #Bright enough to be a color
         detect = "cones"
@@ -135,7 +140,8 @@ def CONE_DETECT(color):
         print("saw red cone")
         protocol = 'red'
     elif (color =='BLUE'):
-        print("blue!")
+        # print("blue!")
+        None
     elif (color == 'ORANGE'):
         if(protocol == 'yellow'):                     #if its in idle, changes state to green protocol
             SetTime(5)
@@ -145,19 +151,10 @@ def CONE_DETECT(color):
             SetTime(5)
             protocol = 'yellow'
 
+
 try:
     while 1:
 
-###################################################Ultrasonic################################
-        Ultrasonic()
-        print(round(dist_cm, 1),'cm')
-        if (dist_cm <80):
-            i=i+1
-        else:
-            i=0
-        if i>3:                             #debounce for ultrasonic
-            print("too close")
-            protocol ="red"
 
 ############################################ Video Setup ####################################
         _, frame = cap.read()
@@ -171,29 +168,85 @@ try:
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             area = cv2.contourArea(contour)
-            if(area > 300):
+            if(1000000>area > 2000):
+                GPIO.output(red, GPIO.LOW)
+                GPIO.output(blue, GPIO.HIGH)
                 protocol="blue"
                 x, y, w, h = cv2.boundingRect(contour)
-                print (x, ", x")
+                # print (x, ", x")
                 frame = cv2.rectangle(frame, (x, y),(x + w, y + h),colorbox, 2)
                 cv2.putText(frame, name+" Detected", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1,colorbox,2)
                 break
             else:
                 if (protocol == "blue"):
-                    protocol = 'orange'
+                    GPIO.output(blue, GPIO.LOW)
+                    protocol = last_prot
+                    
+###################################################Ultrasonic################################
+        global dist_cm
+        delayTime = 0
+        GPIO.output(trigPin, 0)
+        time.sleep(2E-6)
+        # set trigger pin high for 10 micro seconds
+        GPIO.output(trigPin, 1)
+        time.sleep(10E-6)
+        # go back to zero - communication compete to send ping
+        GPIO.output(trigPin, 0)
+        # now need to wait till echo pin goes high to start the timer
+        # this means the ping has been sent
+        delayTime = time.time() + .2
+        while GPIO.input(echoPin) == 0:
+            if (time.time() > delayTime):
+                break
+            pass
+        # start the time - use system time
+        echoStartTime = time.time()
+        # wait for echo pin to go down to zero
+        delayTime = time.time() + .2
+        while GPIO.input(echoPin) == 1:
+            if (time.time() > delayTime):
+                break
+            pass
+        echoStopTime = time.time()
+        # calculate ping travel time
+        pingTravelTime = echoStopTime - echoStartTime
+        # Use the time to calculate the distance to the target.
+        # speed of sound at 72 deg F is 344.44 m/s
+        # from weather.gov/epz/wxcalc_speedofsound.
+        # equations used by calculator at website above.
+        # speed of sound = 643.855*((temp_in_kelvin/273.15)^0.5)
+        # temp_in_kelvin = ((5/9)*(temp_in_F - 273.15)) + 32
+        #
+        # divide in half since the time of travel is out and back
+        dist_cm = (pingTravelTime*34444)/2
+        # sleep to slow things down
+        # time.sleep(delayTime)
+                        #Timer Function
 
+        # print(round(dist_cm, 1),'cm')
+        if (dist_cm <80):
+            i=i+1
+        else:
+            i=0
+        if i>2:                             #debounce for ultrasonic
+            print("too close")
+            protocol ="red"
 
-        cx1 = int(width/2-300)  #finds x values of pixels used to sense cones
+################################### SENSOR PIXELS ##########################################
+
+        cx1 = int(width/2-200)  #finds x values of pixels used to sense cones
         cx2 = int(width/2)
-        cx3 = int(width/2+300)
-        cx4 = int(width/2-150)
-        cx5 = int(width/2+150)
+        cx3 = int(width/2+200)
+        cx4 = int(width/2-100)
+        cx5 = int(width/2+100)
+        cx6 = cx1 -150
+        cx7 = cx3 +150
         cy = int(700)           
 
-        ly = int(height/2+100)  #sidewalk detector pixel locations (xy)
-        lx = int(200)
-        rx =int(width-200)
-        ry = int(height/2+100)
+        ly = int(height/2+200)  #sidewalk detector pixel locations (xy)
+        lx = int(100)
+        rx =int(width-100)
+        ry = int(height/2+200)
 
                                             #HSV pixel setup for each 'sensor'
         Sensor1 = hsv_frame[cy,cx1]                     #
@@ -216,6 +269,14 @@ try:
         hue5 = Sensor5[0]
         cone5 = Sensor5[1]
 
+        Sensor6 = hsv_frame[cy,cx6]                     #
+        hue6 = Sensor6[0]
+        cone6 = Sensor6[1]
+
+        Sensor7 = hsv_frame[cy,cx7]                     #
+        hue7 = Sensor7[0]
+        cone7 = Sensor7[1]
+
         detector_left = hsv_frame[ly,lx]    #gets the saturation of the sidewalk detector pixels
         detector_right = hsv_frame[ry,rx]
         saturation_left = detector_left[1]
@@ -226,55 +287,65 @@ try:
         colors(cone3,hue3)
         colors(cone4,hue4)
         colors(cone5,hue5)
+        # colors(cone6,hue6)
+        # colors(cone7,hue7)
 
         if (last_dc != dc):                 #updates pwm if it is changed
             pwm.ChangeDutyCycle(dc)
             last_dc = dc
 
-        if saturation_left <50:             #Saturation Detection (Left,right)
+        if saturation_left <20:             #Saturation Detection (Left,right)
             left_sense = "on"
         else:
             left_sense = "off"
-        if saturation_right <50:
+        if saturation_right <20:
             right_sense = "on"
         else:
             right_sense = "off"
 
+        
         ############################################# BLUE PROTOCOL ############################################
         if(protocol == "blue"):
-            if (x > cx2):                       #middle x value defined earlier
+            dc = 100
+            GPIO.output(red, GPIO.LOW)
+            if (x > cx2-w/2):                       #middle x value defined earlier
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.HIGH)
-            elif (x < cx2):
+            elif (x < cx2-w/2):
                 GPIO.output(left, GPIO.HIGH)
+            
                 GPIO.output(right, GPIO.LOW)
         ############################################# ORANGE RIGHT YELLOW LEFT TURN PROTOCOL ##################################
-        if(protocol == "orange"):   
+        if(protocol == "orange"):  
             dc = 100
+            last_prot="orange" 
             # if(t_end > time.time()):
             GPIO.output(red, GPIO.LOW)
-            if(left_sense == "off"):
-                GPIO.output(left, GPIO.LOW)
-                GPIO.output(right, GPIO.HIGH)
-            elif(right_sense == "off"):
+            # if(left_sense == "off"):
+            #     GPIO.output(left, GPIO.LOW)
+            #     GPIO.output(right, GPIO.HIGH)
+            if(right_sense == "off"):
                 GPIO.output(left, GPIO.HIGH)
                 GPIO.output(right, GPIO.LOW)
             else:
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.HIGH)
+                dc = 100
             # else:
             #     protocol = "idle"
 
         elif(protocol == "yellow"):
+            last_prot='yellow'
+
             dc = 100    
             # if(t_end > time.time()):
             GPIO.output(red, GPIO.LOW)
             if(left_sense == "off"):
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.HIGH)
-            elif(right_sense == "off"):
-                GPIO.output(left, GPIO.HIGH)
-                GPIO.output(right, GPIO.LOW)
+            # if(right_sense == "off"):--
+            #     GPIO.output(left, GPIO.HIGH)
+            #     GPIO.output(right, GPIO.LOW)
             else:
                 GPIO.output(left, GPIO.HIGH)
                 GPIO.output(right, GPIO.LOW)
@@ -304,15 +375,17 @@ try:
         ############################################LATCHING eSTOP protocol###############################
         elif(protocol =='red'):
             pwm.ChangeDutyCycle(0)
+            dc=0
             GPIO.output(left, GPIO.LOW)
             GPIO.output(right, GPIO.LOW)
             GPIO.output(red,GPIO.HIGH)
+            GPIO.output(blue, GPIO.LOW)
             
             while True:
                 if GPIO.input(butPin)==GPIO.LOW:
                     SetTime(.2)
                     debounce = t_end
-                    protocol = 'orange'
+                    protocol = last_prot
                     print ("pressed")
                     break
         else:
@@ -323,21 +396,29 @@ try:
         cv2.circle(frame, (cx2, cy),5, (255, 255, 255),3)
         cv2.circle(frame, (cx3, cy),5, (255, 255, 255),3) 
         cv2.circle(frame, (cx4, cy),5, (255, 255, 255),3)
-        cv2.circle(frame, (cx5, cy),5, (255, 255, 255),3)                
+        cv2.circle(frame, (cx5, cy),5, (255, 255, 255),3)   
+        cv2.circle(frame, (cx6, cy),5, (255, 255, 255),3)
+        cv2.circle(frame, (cx7, cy),5, (255, 255, 255),3)              
         cv2.circle(frame, (lx,ly),5, (255, 255, 255),3)
         cv2.circle(frame, (rx,ry),5, (255, 255, 255),3)
         # print(color)
 
-        # print(Sensor1)
+        # print(saturation_left)
+        # print(saturation_right)
         # print("left: ",left_sense)
         # print("right: ",right_sense)
-        print("protocol:", protocol)
+        # print("protocol:", protocol)
         # print(t_end-time.time())
-
+        
+        count=count+1
+        if (time.time() >= second):
+            print(count)
+            second = time.time()+1
+            count=0
         #break on button press/terminate program
         if(debounce < time.time()):
             if GPIO.input(butPin)==GPIO.LOW:
-
+                GPIO.output(blue, GPIO.LOW)
                 GPIO.output(red, GPIO.LOW)
                 GPIO.output(left, GPIO.LOW)
                 GPIO.output(right, GPIO.LOW)
