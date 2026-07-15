@@ -1,7 +1,32 @@
-Spring 2024 TTU Microcontroller Project Lab group 1 Autonomous Power Wheel
----
-The puropse of this project is to convert a normal Power Wheel toy car into an autonomous vehicle that follows the sidewalk around the engineering building. This repository contains the Raspberry Pi4 code used as the brain of the system.
-The capabilities of this vehicle are: left and right turns, normal stop, emergency stop, and a special blue following protocol, which can be repurposed to follow someone around.
+# Autonomous Powerwheel
 
-To acomplish this, we connected the wiring from the Power Wheel to a Raspberry Pi 4, as well as using an H-bridge and a mosfet for integration with the motors.
+Spring 2024 TTU Microcontroller Project Lab — Group 1
 
+## Project Overview
+This project converts a standard **Power Wheels** toy car into an autonomous vehicle that can follow a sidewalk around the engineering building.
+
+The system is built around a **Raspberry Pi 4** and includes hardware and software integration for steering, motor control, and safety behaviors.
+
+## Current Capabilities
+- Left and right turning
+- Normal stop
+- Emergency stop
+- Blue-following protocol (can be repurposed for person-following)
+
+## Hardware Integration
+To accomplish this, we integrated the Power Wheels electrical system with:
+- Raspberry Pi 4
+- H-bridge motor driver
+- MOSFET-based motor control circuitry
+
+## Repository Contents
+This repository contains code and resources for:
+- Raspberry Pi 4 control logic
+- Motor actuation and vehicle movement control
+- Autonomous behavior implementation
+
+## Safety Notes
+This is an experimental student project. Always test in controlled environments and include a physical emergency stop when operating the vehicle.
+
+## Team
+TTU Microcontroller Project Lab — Group 1 (Spring 2024)
